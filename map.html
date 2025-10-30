@@ -3,12 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Map with Markers</title>
-
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-          crossorigin=""/>
+    <title>3D Interactive Globe with Landmarks</title>
 
     <style>
         * {
@@ -19,20 +14,26 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f0f0;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: white;
+            overflow-x: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: rgba(102, 126, 234, 0.2);
+            backdrop-filter: blur(10px);
             color: white;
             padding: 20px;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-bottom: 2px solid rgba(102, 126, 234, 0.5);
+            position: relative;
+            z-index: 10;
         }
 
         .header h1 {
             margin-bottom: 10px;
-            font-size: 2em;
+            font-size: 2.5em;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
 
         .header p {
@@ -40,261 +41,518 @@
             opacity: 0.9;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-
-        #map {
-            height: 600px;
+        #globe-container {
             width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            border: 3px solid #667eea;
+            height: 100vh;
+            position: relative;
         }
 
-        .info-panel {
-            background: white;
+        .controls-info {
+            position: absolute;
+            top: 120px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
             padding: 20px;
-            margin-top: 20px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+            max-width: 300px;
+            z-index: 100;
         }
 
-        .info-panel h2 {
+        .controls-info h3 {
             color: #667eea;
             margin-bottom: 15px;
+            font-size: 1.2em;
         }
 
-        .location-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .location-item {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .location-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .location-item h3 {
-            color: #764ba2;
-            margin-bottom: 8px;
-            font-size: 1.1em;
-        }
-
-        .location-item p {
-            color: #555;
+        .controls-info p {
+            margin: 8px 0;
             font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .controls-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .controls-info li {
             margin: 5px 0;
+            font-size: 0.9em;
         }
 
-        .coordinates {
-            font-family: 'Courier New', monospace;
-            background: rgba(255,255,255,0.5);
-            padding: 5px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
+        .location-info {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-radius: 15px;
+            border: 2px solid rgba(102, 126, 234, 0.6);
+            max-width: 500px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 100;
         }
 
-        /* Custom marker popup styling */
-        .leaflet-popup-content-wrapper {
-            border-radius: 8px;
-            box-shadow: 0 3px 14px rgba(0,0,0,0.3);
+        .location-info.visible {
+            opacity: 1;
         }
 
-        .leaflet-popup-content {
-            margin: 15px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .popup-content h3 {
+        .location-info h3 {
             color: #667eea;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            font-size: 1.5em;
         }
 
-        .popup-content p {
+        .location-info p {
             margin: 5px 0;
-            color: #555;
+            font-size: 1em;
+        }
+
+        .legend {
+            position: absolute;
+            top: 120px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.5);
+            max-width: 280px;
+            z-index: 100;
+        }
+
+        .legend h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+
+        .legend-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .legend-text {
+            font-size: 0.9em;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            color: #667eea;
+            z-index: 200;
         }
 
         @media (max-width: 768px) {
-            #map {
-                height: 400px;
+            .controls-info, .legend {
+                max-width: 250px;
+                padding: 15px;
+                font-size: 0.85em;
             }
 
             .header h1 {
-                font-size: 1.5em;
+                font-size: 1.8em;
             }
 
-            .header p {
-                font-size: 0.9em;
+            .location-info {
+                max-width: 90%;
+                padding: 15px;
             }
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Interactive Map Interface</h1>
-        <p>Explore locations with markers and tooltips</p>
+        <h1>🌍 Interactive 3D Globe</h1>
+        <p>Rotate the globe and explore world landmarks in 3D</p>
     </div>
 
-    <div class="container">
-        <div id="map"></div>
-
-        <div class="info-panel">
-            <h2>Featured Locations</h2>
-            <p>Click on any marker on the map to view detailed information about each location.</p>
-            <div class="location-list" id="locationList"></div>
-        </div>
+    <div id="globe-container">
+        <div class="loading">Loading Globe...</div>
     </div>
 
-    <!-- Leaflet JavaScript -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin=""></script>
+    <div class="controls-info">
+        <h3>🎮 Controls</h3>
+        <ul>
+            <li><strong>Drag:</strong> Rotate globe</li>
+            <li><strong>Scroll:</strong> Zoom in/out</li>
+            <li><strong>Click 3D figure:</strong> View info</li>
+            <li><strong>Right-click drag:</strong> Pan view</li>
+        </ul>
+    </div>
+
+    <div class="legend">
+        <h3>📍 Landmarks</h3>
+        <div id="legend-list"></div>
+    </div>
+
+    <div class="location-info" id="location-info">
+        <h3 id="location-name">Location</h3>
+        <p id="location-description"></p>
+        <p id="location-details"></p>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
+    <!-- Globe.gl -->
+    <script src="https://unpkg.com/globe.gl@2.31.0/dist/globe.gl.min.js"></script>
 
     <script>
-        // Sample locations with coordinates
+        // Locations data with 3D model configurations
         const locations = [
             {
                 name: "Eiffel Tower",
-                coordinates: [48.8584, 2.2945],
+                lat: 48.8584,
+                lng: 2.2945,
                 description: "Iconic iron lattice tower in Paris, France",
                 category: "Monument",
-                established: "1889"
+                established: "1889",
+                color: "#ff6b6b",
+                modelType: "tower"
             },
             {
                 name: "Statue of Liberty",
-                coordinates: [40.6892, -74.0445],
+                lat: 40.6892,
+                lng: -74.0445,
                 description: "Colossal neoclassical sculpture on Liberty Island, New York",
                 category: "Monument",
-                established: "1886"
+                established: "1886",
+                color: "#4ecdc4",
+                modelType: "statue"
             },
             {
                 name: "Sydney Opera House",
-                coordinates: [-33.8568, 151.2153],
+                lat: -33.8568,
+                lng: 151.2153,
                 description: "Multi-venue performing arts centre in Sydney, Australia",
                 category: "Cultural",
-                established: "1973"
+                established: "1973",
+                color: "#45b7d1",
+                modelType: "opera"
             },
             {
                 name: "Taj Mahal",
-                coordinates: [27.1751, 78.0421],
+                lat: 27.1751,
+                lng: 78.0421,
                 description: "Ivory-white marble mausoleum in Agra, India",
                 category: "Monument",
-                established: "1653"
+                established: "1653",
+                color: "#f9ca24",
+                modelType: "dome"
             },
             {
                 name: "Big Ben",
-                coordinates: [51.5007, -0.1246],
+                lat: 51.5007,
+                lng: -0.1246,
                 description: "Great bell of the clock at Palace of Westminster, London",
                 category: "Monument",
-                established: "1859"
+                established: "1859",
+                color: "#f0932b",
+                modelType: "tower"
             },
             {
                 name: "Christ the Redeemer",
-                coordinates: [-22.9519, -43.2105],
+                lat: -22.9519,
+                lng: -43.2105,
                 description: "Art Deco statue of Jesus Christ in Rio de Janeiro, Brazil",
                 category: "Monument",
-                established: "1931"
+                established: "1931",
+                color: "#6c5ce7",
+                modelType: "statue"
             },
             {
                 name: "Colosseum",
-                coordinates: [41.8902, 12.4922],
+                lat: 41.8902,
+                lng: 12.4922,
                 description: "Ancient amphitheatre in Rome, Italy",
                 category: "Historical",
-                established: "80 AD"
+                established: "80 AD",
+                color: "#a29bfe",
+                modelType: "colosseum"
             },
             {
                 name: "Great Wall of China",
-                coordinates: [40.4319, 116.5704],
+                lat: 40.4319,
+                lng: 116.5704,
                 description: "Series of fortifications in northern China",
                 category: "Historical",
-                established: "7th century BC"
+                established: "7th century BC",
+                color: "#fd79a8",
+                modelType: "wall"
             }
         ];
 
-        // Initialize the map centered on a global view
-        const map = L.map('map').setView([20, 0], 2);
-
-        // Add OpenStreetMap tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19,
-        }).addTo(map);
-
-        // Custom icon for markers
-        const customIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-
-        // Add markers for each location
-        locations.forEach((location, index) => {
-            // Create marker with custom icon
-            const marker = L.marker(location.coordinates, {icon: customIcon}).addTo(map);
-
-            // Create popup content
-            const popupContent = `
-                <div class="popup-content">
-                    <h3>${location.name}</h3>
-                    <p><strong>Description:</strong> ${location.description}</p>
-                    <p><strong>Category:</strong> ${location.category}</p>
-                    <p><strong>Established:</strong> ${location.established}</p>
-                    <p><strong>Coordinates:</strong> ${location.coordinates[0].toFixed(4)}, ${location.coordinates[1].toFixed(4)}</p>
-                </div>
-            `;
-
-            // Bind popup
-            marker.bindPopup(popupContent);
-
-            // Bind tooltip (shows on hover)
-            marker.bindTooltip(location.name, {
-                permanent: false,
-                direction: 'top',
-                offset: [0, -35]
+        // Create 3D models for different monument types
+        function create3DModel(type, color) {
+            const group = new THREE.Group();
+            const material = new THREE.MeshPhongMaterial({
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.3,
+                shininess: 30
             });
 
-            // Add location to info panel
-            const locationItem = document.createElement('div');
-            locationItem.className = 'location-item';
-            locationItem.innerHTML = `
-                <h3>${location.name}</h3>
-                <p>${location.description}</p>
-                <p><strong>Category:</strong> ${location.category}</p>
-                <p class="coordinates">📍 ${location.coordinates[0].toFixed(4)}, ${location.coordinates[1].toFixed(4)}</p>
-            `;
+            switch(type) {
+                case 'tower':
+                    // Eiffel Tower / Big Ben style
+                    const base = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.4, 0.2, 0.4),
+                        material
+                    );
+                    base.position.y = 0.1;
 
-            // Add click event to zoom to location
-            locationItem.addEventListener('click', () => {
-                map.setView(location.coordinates, 13);
-                marker.openPopup();
+                    const tower = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.2, 1.5, 4),
+                        material
+                    );
+                    tower.position.y = 1;
+
+                    group.add(base);
+                    group.add(tower);
+                    break;
+
+                case 'statue':
+                    // Statue of Liberty / Christ the Redeemer
+                    const pedestal = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.25, 0.3, 0.4, 8),
+                        material
+                    );
+                    pedestal.position.y = 0.2;
+
+                    const body = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.15, 0.2, 0.8, 8),
+                        material
+                    );
+                    body.position.y = 0.8;
+
+                    const head = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.15, 8, 8),
+                        material
+                    );
+                    head.position.y = 1.35;
+
+                    group.add(pedestal);
+                    group.add(body);
+                    group.add(head);
+                    break;
+
+                case 'opera':
+                    // Sydney Opera House shells
+                    for(let i = 0; i < 3; i++) {
+                        const shell = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.3, 8, 8, 0, Math.PI, 0, Math.PI/2),
+                            material
+                        );
+                        shell.position.x = (i - 1) * 0.3;
+                        shell.position.y = 0.3;
+                        shell.rotation.z = Math.PI / 4;
+                        group.add(shell);
+                    }
+                    break;
+
+                case 'dome':
+                    // Taj Mahal
+                    const platform = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.6, 0.15, 0.6),
+                        material
+                    );
+                    platform.position.y = 0.075;
+
+                    const building = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.5, 0.5, 0.5),
+                        material
+                    );
+                    building.position.y = 0.5;
+
+                    const dome = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.25, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+                        material
+                    );
+                    dome.position.y = 0.95;
+
+                    const spire = new THREE.Mesh(
+                        new THREE.ConeGeometry(0.05, 0.3, 8),
+                        material
+                    );
+                    spire.position.y = 1.3;
+
+                    group.add(platform);
+                    group.add(building);
+                    group.add(dome);
+                    group.add(spire);
+                    break;
+
+                case 'colosseum':
+                    // Roman Colosseum
+                    const ring1 = new THREE.Mesh(
+                        new THREE.TorusGeometry(0.35, 0.15, 8, 16, Math.PI * 2),
+                        material
+                    );
+                    ring1.rotation.x = Math.PI / 2;
+                    ring1.position.y = 0.3;
+
+                    const ring2 = new THREE.Mesh(
+                        new THREE.TorusGeometry(0.35, 0.1, 8, 16, Math.PI * 2),
+                        material
+                    );
+                    ring2.rotation.x = Math.PI / 2;
+                    ring2.position.y = 0.5;
+
+                    group.add(ring1);
+                    group.add(ring2);
+                    break;
+
+                case 'wall':
+                    // Great Wall of China - serpentine wall
+                    for(let i = 0; i < 5; i++) {
+                        const segment = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.15, 0.4, 0.15),
+                            material
+                        );
+                        segment.position.x = (i - 2) * 0.2;
+                        segment.position.z = Math.sin(i * 0.5) * 0.2;
+                        segment.position.y = 0.2 + Math.sin(i * 0.5) * 0.1;
+                        group.add(segment);
+
+                        // Watchtowers
+                        if(i % 2 === 0) {
+                            const tower = new THREE.Mesh(
+                                new THREE.CylinderGeometry(0.1, 0.1, 0.6, 8),
+                                material
+                            );
+                            tower.position.x = (i - 2) * 0.2;
+                            tower.position.z = Math.sin(i * 0.5) * 0.2;
+                            tower.position.y = 0.5;
+                            group.add(tower);
+                        }
+                    }
+                    break;
+            }
+
+            // Add a glowing ring around the base
+            const ring = new THREE.Mesh(
+                new THREE.RingGeometry(0.4, 0.5, 32),
+                new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                })
+            );
+            ring.rotation.x = -Math.PI / 2;
+            group.add(ring);
+
+            return group;
+        }
+
+        // Initialize Globe
+        const globe = Globe()
+            (document.getElementById('globe-container'))
+            .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+            .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+            .backgroundImageUrl('//unpkg.com/three-globe/example/img/night-sky.png')
+            .objectsData(locations)
+            .objectLat('lat')
+            .objectLng('lng')
+            .objectAltitude(0.01)
+            .objectThreeObject(d => create3DModel(d.modelType, d.color))
+            .onObjectClick(d => {
+                // Show location info
+                const infoPanel = document.getElementById('location-info');
+                document.getElementById('location-name').textContent = d.name;
+                document.getElementById('location-description').textContent = d.description;
+                document.getElementById('location-details').textContent =
+                    `${d.category} • Established: ${d.established}`;
+                infoPanel.classList.add('visible');
+
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    infoPanel.classList.remove('visible');
+                }, 5000);
+
+                // Animate to location
+                globe.pointOfView({ lat: d.lat, lng: d.lng, altitude: 2.5 }, 1000);
+            })
+            .onObjectHover(d => {
+                document.body.style.cursor = d ? 'pointer' : 'default';
             });
 
-            locationItem.style.cursor = 'pointer';
-            document.getElementById('locationList').appendChild(locationItem);
+        // Add atmosphere
+        globe.atmosphereColor('rgba(102, 126, 234, 0.4)');
+        globe.atmosphereAltitude(0.25);
+
+        // Auto-rotate
+        let autoRotate = true;
+        globe.controls().autoRotate = true;
+        globe.controls().autoRotateSpeed = 0.5;
+
+        // Stop auto-rotate on user interaction
+        globe.controls().addEventListener('start', () => {
+            autoRotate = false;
+            globe.controls().autoRotate = false;
         });
 
-        // Add zoom controls position
-        map.zoomControl.setPosition('topright');
+        // Create legend
+        const legendList = document.getElementById('legend-list');
+        locations.forEach(location => {
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            item.innerHTML = `
+                <div class="legend-color" style="background: ${location.color}"></div>
+                <div class="legend-text">${location.name}</div>
+            `;
+            item.addEventListener('click', () => {
+                globe.pointOfView({ lat: location.lat, lng: location.lng, altitude: 2 }, 1000);
+            });
+            legendList.appendChild(item);
+        });
 
-        // Optional: Add a scale control
-        L.control.scale().addTo(map);
+        // Remove loading message
+        setTimeout(() => {
+            const loading = document.querySelector('.loading');
+            if(loading) loading.remove();
+        }, 2000);
+
+        // Set initial view
+        globe.pointOfView({ lat: 20, lng: 0, altitude: 2.5 });
+
+        // Add ambient lighting
+        const scene = globe.scene();
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        scene.add(new THREE.DirectionalLight(0xffffff, 0.8));
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            globe.width(window.innerWidth);
+            globe.height(window.innerHeight);
+        });
     </script>
 </body>
 </html>
