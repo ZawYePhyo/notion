@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map with Markers</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f0f0;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        #map {
+            height: 600px;
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border: 3px solid #667eea;
+        }
+
+        .info-panel {
+            background: white;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .info-panel h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .location-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .location-item {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .location-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .location-item h3 {
+            color: #764ba2;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .location-item p {
+            color: #555;
+            font-size: 0.9em;
+            margin: 5px 0;
+        }
+
+        .coordinates {
+            font-family: 'Courier New', monospace;
+            background: rgba(255,255,255,0.5);
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        /* Custom marker popup styling */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 3px 14px rgba(0,0,0,0.3);
+        }
+
+        .leaflet-popup-content {
+            margin: 15px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .popup-content h3 {
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .popup-content p {
+            margin: 5px 0;
+            color: #555;
+        }
+
+        @media (max-width: 768px) {
+            #map {
+                height: 400px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .header p {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Interactive Map Interface</h1>
+        <p>Explore locations with markers and tooltips</p>
+    </div>
+
+    <div class="container">
+        <div id="map"></div>
+
+        <div class="info-panel">
+            <h2>Featured Locations</h2>
+            <p>Click on any marker on the map to view detailed information about each location.</p>
+            <div class="location-list" id="locationList"></div>
+        </div>
+    </div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <script>
+        // Sample locations with coordinates
+        const locations = [
+            {
+                name: "Eiffel Tower",
+                coordinates: [48.8584, 2.2945],
+                description: "Iconic iron lattice tower in Paris, France",
+                category: "Monument",
+                established: "1889"
+            },
+            {
+                name: "Statue of Liberty",
+                coordinates: [40.6892, -74.0445],
+                description: "Colossal neoclassical sculpture on Liberty Island, New York",
+                category: "Monument",
+                established: "1886"
+            },
+            {
+                name: "Sydney Opera House",
+                coordinates: [-33.8568, 151.2153],
+                description: "Multi-venue performing arts centre in Sydney, Australia",
+                category: "Cultural",
+                established: "1973"
+            },
+            {
+                name: "Taj Mahal",
+                coordinates: [27.1751, 78.0421],
+                description: "Ivory-white marble mausoleum in Agra, India",
+                category: "Monument",
+                established: "1653"
+            },
+            {
+                name: "Big Ben",
+                coordinates: [51.5007, -0.1246],
+                description: "Great bell of the clock at Palace of Westminster, London",
+                category: "Monument",
+                established: "1859"
+            },
+            {
+                name: "Christ the Redeemer",
+                coordinates: [-22.9519, -43.2105],
+                description: "Art Deco statue of Jesus Christ in Rio de Janeiro, Brazil",
+                category: "Monument",
+                established: "1931"
+            },
+            {
+                name: "Colosseum",
+                coordinates: [41.8902, 12.4922],
+                description: "Ancient amphitheatre in Rome, Italy",
+                category: "Historical",
+                established: "80 AD"
+            },
+            {
+                name: "Great Wall of China",
+                coordinates: [40.4319, 116.5704],
+                description: "Series of fortifications in northern China",
+                category: "Historical",
+                established: "7th century BC"
+            }
+        ];
+
+        // Initialize the map centered on a global view
+        const map = L.map('map').setView([20, 0], 2);
+
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+        }).addTo(map);
+
+        // Custom icon for markers
+        const customIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // Add markers for each location
+        locations.forEach((location, index) => {
+            // Create marker with custom icon
+            const marker = L.marker(location.coordinates, {icon: customIcon}).addTo(map);
+
+            // Create popup content
+            const popupContent = `
+                <div class="popup-content">
+                    <h3>${location.name}</h3>
+                    <p><strong>Description:</strong> ${location.description}</p>
+                    <p><strong>Category:</strong> ${location.category}</p>
+                    <p><strong>Established:</strong> ${location.established}</p>
+                    <p><strong>Coordinates:</strong> ${location.coordinates[0].toFixed(4)}, ${location.coordinates[1].toFixed(4)}</p>
+                </div>
+            `;
+
+            // Bind popup
+            marker.bindPopup(popupContent);
+
+            // Bind tooltip (shows on hover)
+            marker.bindTooltip(location.name, {
+                permanent: false,
+                direction: 'top',
+                offset: [0, -35]
+            });
+
+            // Add location to info panel
+            const locationItem = document.createElement('div');
+            locationItem.className = 'location-item';
+            locationItem.innerHTML = `
+                <h3>${location.name}</h3>
+                <p>${location.description}</p>
+                <p><strong>Category:</strong> ${location.category}</p>
+                <p class="coordinates">📍 ${location.coordinates[0].toFixed(4)}, ${location.coordinates[1].toFixed(4)}</p>
+            `;
+
+            // Add click event to zoom to location
+            locationItem.addEventListener('click', () => {
+                map.setView(location.coordinates, 13);
+                marker.openPopup();
+            });
+
+            locationItem.style.cursor = 'pointer';
+            document.getElementById('locationList').appendChild(locationItem);
+        });
+
+        // Add zoom controls position
+        map.zoomControl.setPosition('topright');
+
+        // Optional: Add a scale control
+        L.control.scale().addTo(map);
+    </script>
+</body>
+</html>
