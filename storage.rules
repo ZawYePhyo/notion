@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Exports directory - only admins can read/write
+    match /exports/{allPaths=**} {
+      allow read, write: if request.auth != null &&
+        firestore.get(/databases/(default)/documents/employees/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Profile images (future use)
+    match /profiles/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

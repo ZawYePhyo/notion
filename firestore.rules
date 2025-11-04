@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isEmployee() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == 'employee';
+    }
+
+    function isManager() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == 'manager';
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Employees collection
+    match /employees/{employeeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Sites collection
+    match /sites/{siteId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isManager();
+    }
+
+    // Jobs collection
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow create: if isManager() || isAdmin();
+      allow update: if isManager() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Applications collection
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated();
+      allow create: if isEmployee();
+      allow update: if isManager() || isAdmin();
+    }
+
+    // Works collection
+    match /works/{workId} {
+      allow read: if isAuthenticated();
+      allow write: if isEmployee() || isManager() || isAdmin();
+    }
+
+    // Payments collection
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if isOwner(resource.data.userId);
+      allow update: if isOwner(resource.data.userId);
+      allow create: if isAuthenticated();
+    }
+  }
+}
